@@ -14,6 +14,7 @@ import { DebugMode } from '@/lib/Debug';
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
 import { SettingsMenu } from '@/lib/SettingsMenu';
+import { RecordingButton } from '@/lib/RecordingButton';
 import { useSetupE2EE } from '@/lib/useSetupE2EE';
 import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
 
@@ -118,6 +119,14 @@ export function VideoConferenceClientImpl(props: {
             process.env.NEXT_PUBLIC_SHOW_SETTINGS_MENU === 'true' ? SettingsMenu : undefined
           }
         />
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1000,
+        }}>
+          <RecordingButton />
+        </div>
         <DebugMode logLevel={LogLevel.debug} />
       </RoomContext.Provider>
     </div>
