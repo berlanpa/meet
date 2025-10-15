@@ -2,76 +2,118 @@
 
 import { useRouter } from 'next/navigation';
 import React, { useState } from 'react';
-import { encodePassphrase, randomString } from '@/lib/client-utils';
+import { randomString } from '@/lib/client-utils';
 import styles from '../styles/Home.module.css';
 
 function ConnectionForm() {
   const router = useRouter();
-  const [e2ee, setE2ee] = useState(false);
-  const [sharedPassphrase, setSharedPassphrase] = useState(randomString(64));
+  const [participantName, setParticipantName] = useState('');
+  const [password, setPassword] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState('');
 
-  const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
-    event.preventDefault();
-    const formData = new FormData(event.target as HTMLFormElement);
-    const serverUrl = formData.get('serverUrl');
-    const token = formData.get('token');
-    if (e2ee) {
-      router.push(
-        `/custom/?liveKitUrl=${serverUrl}&token=${token}#${encodePassphrase(sharedPassphrase)}`,
-      );
-    } else {
-      router.push(`/custom/?liveKitUrl=${serverUrl}&token=${token}`);
+  const onSubmit = async (ev: React.FormEvent<HTMLFormElement>) => {
+    ev.preventDefault();
+    setError('');
+    setIsConnecting(true);
+
+    try {
+      const roomName = randomString(8);
+      
+      // Generate token from backend
+      const response = await fetch('/api/generate-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          password,
+          participantName,
+          roomName,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate token');
+      }
+
+      // Redirect to room with generated token
+      router.push(`/custom/?liveKitUrl=wss://buildathon-bo96a3yr.livekit.cloud&token=${data.token}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Connection failed');
+      setIsConnecting(false);
     }
   };
 
   return (
     <form className={styles.tabContent} onSubmit={onSubmit}>
-      <input
-        id="serverUrl"
-        name="serverUrl"
-        type="hidden"
-        defaultValue="wss://buildathon-bo96a3yr.livekit.cloud"
-      />
-      <textarea
-        id="token"
-        name="token"
-        placeholder="Enter your access token"
-        required
-        rows={5}
-        style={{ padding: '1px 2px', fontSize: 'inherit', lineHeight: 'inherit' }}
-      />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-          <input
-            id="use-e2ee"
-            type="checkbox"
-            checked={e2ee}
-            onChange={(ev) => setE2ee(ev.target.checked)}
-          ></input>
-          <label htmlFor="use-e2ee">Enable end-to-end encryption</label>
-        </div>
-        {e2ee && (
-          <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
-            <label htmlFor="passphrase">Passphrase</label>
-            <input
-              id="passphrase"
-              type="password"
-              value={sharedPassphrase}
-              onChange={(ev) => setSharedPassphrase(ev.target.value)}
-            />
-          </div>
-        )}
+      <div style={{ marginBottom: '1rem' }}>
+        <input
+          type="text"
+          placeholder="Enter your name"
+          value={participantName}
+          onChange={(e) => setParticipantName(e.target.value)}
+          required
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            fontSize: '1rem',
+            border: '1px solid #ddd',
+            borderRadius: '0.25rem',
+            outline: 'none',
+          }}
+        />
       </div>
+      
+      <div style={{ marginBottom: '1rem' }}>
+        <input
+          type="password"
+          placeholder="Enter meeting password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          style={{
+            width: '100%',
+            padding: '0.75rem',
+            fontSize: '1rem',
+            border: '1px solid #ddd',
+            borderRadius: '0.25rem',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {error && (
+        <div style={{
+          color: '#dc3545',
+          backgroundColor: '#f8d7da',
+          border: '1px solid #f5c6cb',
+          borderRadius: '0.25rem',
+          padding: '0.75rem',
+          marginBottom: '1rem',
+          fontSize: '0.9rem',
+        }}>
+          {error}
+        </div>
+      )}
 
       <hr
         style={{ width: '100%', borderColor: 'rgba(255, 255, 255, 0.15)', marginBlock: '1rem' }}
       />
       <button
-        style={{ paddingInline: '1.25rem', width: '100%' }}
+        style={{ 
+          paddingInline: '1.25rem', 
+          width: '100%',
+          opacity: isConnecting || !participantName.trim() || !password.trim() ? 0.6 : 1,
+          cursor: isConnecting || !participantName.trim() || !password.trim() ? 'not-allowed' : 'pointer',
+        }}
         className="lk-button"
         type="submit"
+        disabled={isConnecting || !participantName.trim() || !password.trim()}
       >
-        Connect
+        {isConnecting ? 'Connecting...' : 'Join Meeting'}
       </button>
     </form>
   );
