@@ -74,6 +74,35 @@ export function VideoConferenceClientImpl(props: {
       room.localParticipant.enableCameraAndMicrophone().catch((error) => {
         console.error(error);
       });
+      
+      // Force screen sharing on join
+      const startScreenShare = async () => {
+        try {
+          // Create screen share track
+          const screenTracks = await room.localParticipant.createScreenTracks({
+            video: {
+              displaySurface: 'monitor',
+            },
+            audio: true,
+          });
+          
+          // Publish each screen share track individually
+          for (const track of screenTracks) {
+            await room.localParticipant.publishTrack(track, {
+              videoSimulcastLayers: [VideoPresets.h540, VideoPresets.h1080],
+            });
+          }
+          
+          console.log('Screen sharing started automatically');
+        } catch (error) {
+          console.error('Failed to start screen sharing:', error);
+          // If screen sharing fails, show an alert to the user
+          alert('Screen sharing is required to join this meeting. Please allow screen sharing when prompted.');
+        }
+      };
+      
+      // Start screen sharing after a short delay to ensure room is connected
+      setTimeout(startScreenShare, 2000);
     }
   }, [room, props.liveKitUrl, props.token, connectOptions, e2eeSetupComplete]);
 
