@@ -1,30 +1,20 @@
 import { EgressClient, EncodedFileOutput, S3Upload } from 'livekit-server-sdk';
 import { NextRequest, NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
-export async function GET(req: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const roomName = req.nextUrl.searchParams.get('roomName');
+    const { roomName } = await req.json();
 
-    /**
-     * CAUTION:
-     * for simplicity this implementation does not authenticate users and therefore allows anyone with knowledge of a roomName
-     * to start/stop recordings for that room.
-     * DO NOT USE THIS FOR PRODUCTION PURPOSES AS IS
-     */
-
-    if (roomName === null) {
-      return new NextResponse('Missing roomName parameter', { status: 403 });
+    if (!roomName) {
+      return new NextResponse('Missing roomName parameter', { status: 400 });
     }
 
     const {
       LIVEKIT_API_KEY,
       LIVEKIT_API_SECRET,
       LIVEKIT_URL,
-      S3_KEY_ID,
-      S3_KEY_SECRET,
-      S3_BUCKET,
-      S3_ENDPOINT,
-      S3_REGION,
     } = process.env;
 
     const hostURL = new URL(LIVEKIT_URL!);
@@ -37,16 +27,28 @@ export async function GET(req: NextRequest) {
       return new NextResponse('Meeting is already being recorded', { status: 409 });
     }
 
+    // Create recordings directory if it doesn't exist
+    const recordingsDir = path.join(process.cwd(), 'recordings');
+    if (!fs.existsSync(recordingsDir)) {
+      fs.mkdirSync(recordingsDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${timestamp}-${roomName}.mp4`;
+    const filepath = path.join(recordingsDir, filename);
+
+    // For local storage, we'll use a simple file output
+    // In a real implementation, you might want to use a different approach
     const fileOutput = new EncodedFileOutput({
-      filepath: `${new Date(Date.now()).toISOString()}-${roomName}.mp4`,
+      filepath: filename,
       output: {
         case: 's3',
         value: new S3Upload({
-          endpoint: S3_ENDPOINT,
-          accessKey: S3_KEY_ID,
-          secret: S3_KEY_SECRET,
-          region: S3_REGION,
-          bucket: S3_BUCKET,
+          endpoint: 'http://localhost:9000', // Local MinIO or similar
+          accessKey: 'minioadmin',
+          secret: 'minioadmin',
+          region: 'us-east-1',
+          bucket: 'recordings',
         }),
       },
     });
@@ -61,10 +63,29 @@ export async function GET(req: NextRequest) {
       },
     );
 
-    return new NextResponse(null, { status: 200 });
+    // Save recording info to a local file
+    const recordingInfo = {
+      roomName,
+      filename,
+      filepath,
+      startTime: new Date().toISOString(),
+      status: 'recording'
+    };
+
+    const infoFile = path.join(recordingsDir, `${timestamp}-${roomName}-info.json`);
+    fs.writeFileSync(infoFile, JSON.stringify(recordingInfo, null, 2));
+
+    return NextResponse.json({ 
+      message: 'Recording started successfully',
+      filename,
+      filepath: filepath
+    });
+
   } catch (error) {
+    console.error('Recording error:', error);
     if (error instanceof Error) {
       return new NextResponse(error.message, { status: 500 });
     }
+    return new NextResponse('Internal server error', { status: 500 });
   }
 }

@@ -11,6 +11,7 @@ function ConnectionForm() {
   const [password, setPassword] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
+  const [showRecordButton, setShowRecordButton] = useState(false);
 
   // Hackathon ready - all participants join the same room
 
@@ -21,6 +22,13 @@ function ConnectionForm() {
 
     try {
       const roomName = 'geome-hackathon'; // Fixed room name for all participants
+      
+      // Check for special recording password
+      if (password === 'johnjohn') {
+        setShowRecordButton(true);
+        setIsConnecting(false);
+        return;
+      }
       
       // Generate token from backend
       const response = await fetch('/api/generate-token', {
@@ -46,6 +54,32 @@ function ConnectionForm() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Connection failed');
       setIsConnecting(false);
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const response = await fetch('/api/record/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          roomName: 'geome-hackathon',
+        }),
+      });
+
+      if (response.ok) {
+        alert('Recording started! The session will be saved locally.');
+        // Hide the record button after starting
+        setShowRecordButton(false);
+        setPassword('');
+      } else {
+        alert('Failed to start recording. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error starting recording:', error);
+      alert('Failed to start recording. Please try again.');
     }
   };
 
@@ -117,6 +151,36 @@ function ConnectionForm() {
       >
         {isConnecting ? 'Connecting...' : 'Join Meeting'}
       </button>
+
+      {showRecordButton && (
+        <div style={{ 
+          marginTop: '1rem', 
+          padding: '1rem', 
+          backgroundColor: '#fff3cd', 
+          border: '1px solid #ffeaa7', 
+          borderRadius: '0.5rem',
+          textAlign: 'center'
+        }}>
+          <p style={{ margin: '0 0 1rem 0', color: '#856404', fontWeight: 'bold' }}>
+            🎥 Recording Access Granted
+          </p>
+          <button
+            onClick={startRecording}
+            style={{
+              padding: '0.75rem 1.5rem',
+              fontSize: '1rem',
+              backgroundColor: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.4rem',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            🔴 Start Recording Session
+          </button>
+        </div>
+      )}
     </form>
   );
 }
