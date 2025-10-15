@@ -3,37 +3,53 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   try {
-    const roomName = req.nextUrl.searchParams.get('roomName');
+    const { searchParams } = new URL(req.url);
+    const roomName = searchParams.get('roomName');
 
-    /**
-     * CAUTION:
-     * for simplicity this implementation does not authenticate users and therefore allows anyone with knowledge of a roomName
-     * to start/stop recordings for that room.
-     * DO NOT USE THIS FOR PRODUCTION PURPOSES AS IS
-     */
-
-    if (roomName === null) {
-      return new NextResponse('Missing roomName parameter', { status: 403 });
+    if (!roomName) {
+      return new NextResponse('Missing roomName parameter', { status: 400 });
     }
 
-    const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET, LIVEKIT_URL } = process.env;
+    const {
+      LIVEKIT_API_KEY,
+      LIVEKIT_API_SECRET,
+      LIVEKIT_URL,
+    } = process.env;
 
     const hostURL = new URL(LIVEKIT_URL!);
     hostURL.protocol = 'https:';
 
     const egressClient = new EgressClient(hostURL.origin, LIVEKIT_API_KEY, LIVEKIT_API_SECRET);
-    const activeEgresses = (await egressClient.listEgress({ roomName })).filter(
-      (info) => info.status < 2,
-    );
-    if (activeEgresses.length === 0) {
-      return new NextResponse('No active recording found', { status: 404 });
-    }
-    await Promise.all(activeEgresses.map((info) => egressClient.stopEgress(info.egressId)));
 
-    return new NextResponse(null, { status: 200 });
+    // List all active egresses for this room
+    const existingEgresses = await egressClient.listEgress({ roomName });
+    
+    if (existingEgresses.length === 0) {
+      return new NextResponse('No active recordings found for this room', { status: 404 });
+    }
+
+    // Stop all active recordings for this room
+    const stopPromises = existingEgresses
+      .filter(egress => egress.status < 2) // Only stop active recordings (status < 2 means active)
+      .map(egress => egressClient.stopEgress(egress.egressId));
+
+    if (stopPromises.length === 0) {
+      return new NextResponse('No active recordings to stop', { status: 404 });
+    }
+
+    await Promise.all(stopPromises);
+
+    return NextResponse.json({ 
+      message: 'Recording stopped successfully',
+      roomName,
+      stoppedCount: stopPromises.length
+    });
+
   } catch (error) {
+    console.error('Stop recording error:', error);
     if (error instanceof Error) {
       return new NextResponse(error.message, { status: 500 });
     }
+    return new NextResponse('Internal server error', { status: 500 });
   }
 }
