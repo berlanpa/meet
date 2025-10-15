@@ -12,6 +12,8 @@ function ConnectionForm() {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState('');
 
+  // Hackathon ready - all participants join the same room
+
   const onSubmit = async (ev: React.FormEvent<HTMLFormElement>) => {
     ev.preventDefault();
     setError('');
