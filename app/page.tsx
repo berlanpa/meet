@@ -130,17 +130,6 @@ export default function Page() {
           <h2>
             Live beyond limits.
           </h2>
-          <p style={{ 
-            color: '#666', 
-            fontSize: '0.9rem', 
-            marginTop: '0.5rem',
-            backgroundColor: '#f8f9fa',
-            padding: '0.75rem',
-            borderRadius: '0.5rem',
-            border: '1px solid #e9ecef'
-          }}>
-            📺 Screen sharing will be required to join this meeting
-          </p>
         </div>
         <ConnectionForm />
       </main>
