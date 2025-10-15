@@ -70,7 +70,8 @@ function ConnectionForm() {
       });
 
       if (response.ok) {
-        alert('Recording started! The session will be saved locally.');
+        const data = await response.json();
+        alert(`Recording started! The session will be saved to: ${data.localPath || '~/LiveKit-Recordings/'}`);
         // Hide the record button after starting
         setShowRecordButton(false);
         setPassword('');
@@ -163,6 +164,9 @@ function ConnectionForm() {
         }}>
           <p style={{ margin: '0 0 1rem 0', color: '#856404', fontWeight: 'bold' }}>
             🎥 Recording Access Granted
+          </p>
+          <p style={{ margin: '0 0 1rem 0', color: '#6c757d', fontSize: '0.9rem' }}>
+            Recording will be saved to your local computer in ~/LiveKit-Recordings/
           </p>
           <button
             onClick={startRecording}
