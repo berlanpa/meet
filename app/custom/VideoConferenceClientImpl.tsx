@@ -16,6 +16,7 @@ import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
 import { SettingsMenu } from '@/lib/SettingsMenu';
 import { useSetupE2EE } from '@/lib/useSetupE2EE';
 import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
+import { RecordingButton } from '@/lib/RecordingButton';
 
 export function VideoConferenceClientImpl(props: {
   liveKitUrl: string;
@@ -118,6 +119,7 @@ export function VideoConferenceClientImpl(props: {
             process.env.NEXT_PUBLIC_SHOW_SETTINGS_MENU === 'true' ? SettingsMenu : undefined
           }
         />
+        <RecordingButton room={room} roomName="geome-hackathon" />
         <DebugMode logLevel={LogLevel.debug} />
       </RoomContext.Provider>
     </div>
