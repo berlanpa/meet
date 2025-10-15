@@ -18,7 +18,7 @@ function ConnectionForm() {
     setIsConnecting(true);
 
     try {
-      const roomName = randomString(8);
+      const roomName = 'geome-hackathon'; // Fixed room name for all participants
       
       // Generate token from backend
       const response = await fetch('/api/generate-token', {
